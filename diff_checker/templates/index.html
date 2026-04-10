@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>diffcheck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Berkeley+Mono:ital,wght@0,100..700;1,100..700&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0e0e10;
+            --surface: #18181c;
+            --surface2: #1e1e24;
+            --border: rgba(255, 255, 255, 0.07);
+            --border2: rgba(255, 255, 255, 0.12);
+            --text: #e8e8ec;
+            --muted: #6b6b78;
+            --accent: #7c6cfa;
+            --accent-dim: rgba(124, 108, 250, 0.12);
+            --add-bg: rgba(52, 211, 130, 0.08);
+            --add-gutter: rgba(52, 211, 130, 0.15);
+            --add-text: #6ee7b7;
+            --del-bg: rgba(248, 113, 113, 0.08);
+            --del-gutter: rgba(248, 113, 113, 0.15);
+            --del-text: #fca5a5;
+            --ctx-text: #52525e;
+            --mono: 'Berkeley Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 14px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 18px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-family: var(--mono);
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .tagline {
+            font-size: 12px;
+            color: var(--muted);
+            margin-left: auto;
+            font-family: var(--mono);
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 28px 28px;
+            gap: 16px;
+        }
+
+        .editors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .editor-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .pane-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--muted);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            font-family: var(--mono);
+        }
+
+        textarea {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 12.5px;
+            line-height: 1.65;
+            padding: 14px 16px;
+            resize: vertical;
+            height: 200px;
+            outline: none;
+            transition: border-color 0.15s;
+            width: 100%;
+        }
+
+        textarea::placeholder {
+            color: var(--muted);
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 7px 16px;
+            border-radius: 7px;
+            border: 1px solid var(--border2);
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            transition: background 0.12s, border-color 0.12s;
+        }
+
+        .btn:hover {
+            background: var(--surface2);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #6b5ce7;
+            border-color: #6b5ce7;
+        }
+
+        .seg {
+            display: flex;
+            border: 1px solid var(--border2);
+            border-radius: 7px;
+            overflow: hidden;
+        }
+
+        .seg .btn {
+            border: none;
+            border-radius: 0;
+            font-size: 12px;
+            padding: 6px 13px;
+            color: var(--muted);
+        }
+
+        .seg .btn.active {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .seg .btn:first-child {
+            border-right: 1px solid var(--border);
+        }
+
+        .ctx-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 4px;
+        }
+
+        .ctx-control label {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .ctx-control input[type=number] {
+            width: 48px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 4px 8px;
+            outline: none;
+            text-align: center;
+        }
+
+        .stats {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+
+        .stat-add {
+            color: var(--add-text);
+        }
+
+        .stat-del {
+            color: var(--del-text);
+        }
+
+        .stat-muted {
+            color: var(--muted);
+        }
+
+        .output-wrap {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+
+        .diff-output {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+
+        .hunk-header {
+            background: rgba(124, 108, 250, 0.08);
+            color: #9d93f5;
+            padding: 3px 14px;
+            font-size: 11px;
+            border-top: 1px solid rgba(124, 108, 250, 0.15);
+            border-bottom: 1px solid rgba(124, 108, 250, 0.15);
+        }
+
+        .hunk-header:first-child {
+            border-top: none;
+        }
+
+        .diff-row {
+            display: flex;
+        }
+
+        .gutter {
+            display: flex;
+            min-width: 60px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+        }
+
+        .ln {
+            width: 30px;
+            text-align: right;
+            padding: 0 6px;
+            color: var(--muted);
+            font-size: 11px;
+            user-select: none;
+            line-height: 1.6;
+        }
+
+        .mark {
+            width: 18px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            flex-shrink: 0;
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        .code {
+            padding: 0 14px;
+            white-space: pre;
+            overflow-x: auto;
+            flex: 1;
+            line-height: 1.6;
+        }
+
+        .diff-row.add {
+            background: var(--add-bg);
+        }
+
+        .diff-row.add .gutter {
+            background: var(--add-gutter);
+        }
+
+        .diff-row.add .mark {
+            color: var(--add-text);
+        }
+
+        .diff-row.add .code {
+            color: var(--add-text);
+        }
+
+        .diff-row.del {
+            background: var(--del-bg);
+        }
+
+        .diff-row.del .gutter {
+            background: var(--del-gutter);
+        }
+
+        .diff-row.del .mark {
+            color: var(--del-text);
+        }
+
+        .diff-row.del .code {
+            color: var(--del-text);
+        }
+
+        .diff-row.ctx .code {
+            color: var(--ctx-text);
+        }
+
+        .diff-row.ctx .gutter {
+            background: transparent;
+        }
+
+        .side-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .side-col {
+            overflow-x: auto;
+        }
+
+        .side-col:first-child {
+            border-right: 1px solid var(--border);
+        }
+
+        .side-row {
+            display: flex;
+        }
+
+        .side-ln {
+            width: 36px;
+            min-width: 36px;
+            text-align: right;
+            padding: 0 6px;
+            color: var(--muted);
+            font-size: 11px;
+            user-select: none;
+            flex-shrink: 0;
+            line-height: 1.6;
+        }
+
+        .side-code {
+            padding: 0 12px;
+            white-space: pre;
+            flex: 1;
+            overflow-x: hidden;
+            line-height: 1.6;
+            color: var(--ctx-text);
+        }
+
+        .side-row.add {
+            background: var(--add-bg);
+        }
+
+        .side-row.add .side-ln {
+            background: var(--add-gutter);
+            color: var(--add-text);
+        }
+
+        .side-row.add .side-code {
+            color: var(--add-text);
+        }
+
+        .side-row.del {
+            background: var(--del-bg);
+        }
+
+        .side-row.del .side-ln {
+            background: var(--del-gutter);
+            color: var(--del-text);
+        }
+
+        .side-row.del .side-code {
+            color: var(--del-text);
+        }
+
+        .identical-msg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #6ee7b7;
+            font-family: var(--mono);
+            font-size: 13px;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #6ee7b7;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">diff<span>//</span>check</div>
+        <div class="tagline">python · flask · difflib</div>
+    </header>
+
+    <div class="main">
+        <div class="editors">
+            <div class="editor-pane">
+                <div class="pane-label">Original</div>
+                <textarea id="orig" placeholder="Paste original code..."></textarea>
+            </div>
+            <div class="editor-pane">
+                <div class="pane-label">Modified</div>
+                <textarea id="mod" placeholder="Paste modified code..."></textarea>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="runDiff()">Compare</button>
+            <button class="btn" onclick="clearAll()">Clear</button>
+
+            <div class="seg">
+                <button class="btn active" id="btn-unified" onclick="setMode('unified')">Unified</button>
+                <button class="btn" id="btn-side" onclick="setMode('side')">Side by side</button>
+            </div>
+
+            <div class="ctx-control" id="ctx-wrap">
+                <label>context</label>
+                <input type="number" id="ctx" value="3" min="0" max="20">
+            </div>
+
+            <div class="stats" id="stats" style="display:none">
+                <span class="stat-add" id="s-add">+0</span>
+                <span class="stat-del" id="s-del">-0</span>
+            </div>
+        </div>
+
+        <div class="output-wrap">
+            <div id="output">
+                <div class="empty-state">paste code above and click compare</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mode = 'unified';
+
+        function setMode(m) {
+            mode = m;
+            document.getElementById('btn-unified').classList.toggle('active', m === 'unified');
+            document.getElementById('btn-side').classList.toggle('active', m === 'side');
+            document.getElementById('ctx-wrap').style.display = m === 'unified' ? 'flex' : 'none';
+            const orig = document.getElementById('orig').value;
+            const mod = document.getElementById('mod').value;
+            if (orig || mod) runDiff();
+        }
+
+        function clearAll() {
+            document.getElementById('orig').value = '';
+            document.getElementById('mod').value = '';
+            document.getElementById('output').innerHTML = '<div class="empty-state">paste code above and click compare</div>';
+            document.getElementById('stats').style.display = 'none';
+        }
+
+        function esc(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function renderUnified(data) {
+            if (data.stats.identical) {
+                return '<div class="identical-msg"><span class="dot"></span>files are identical</div>';
+            }
+            let html = '<div class="diff-output">';
+            for (const hunk of data.hunks) {
+                html += `<div class="hunk-header">${esc(hunk.header)}</div>`;
+                for (const line of hunk.lines) {
+                    const mark = line.type === 'add' ? '+' : line.type === 'del' ? '-' : ' ';
+                    html += `<div class="diff-row ${line.type}">
+        <div class="gutter"><span class="ln"></span></div>
+        <span class="mark">${mark}</span>
+        <span class="code">${esc(line.text)}</span>
+      </div>`;
+                }
+            }
+            return html + '</div>';
+        }
+
+        function renderSide(data) {
+            if (data.stats.identical) {
+                return '<div class="identical-msg"><span class="dot"></span>files are identical</div>';
+            }
+            const rows = data.hunks[0].lines;
+            let left = '', right = '';
+            let ln_a = 1, ln_b = 1;
+            for (const row of rows) {
+                const la = row.left_type !== 'empty' ? ln_a++ : '';
+                const lb = row.right_type !== 'empty' ? ln_b++ : '';
+                left += `<div class="side-row ${row.left_type}"><span class="side-ln">${la}</span><span class="side-code">${esc(row.left)}</span></div>`;
+                right += `<div class="side-row ${row.right_type}"><span class="side-ln">${lb}</span><span class="side-code">${esc(row.right)}</span></div>`;
+            }
+            return `<div class="diff-output side-grid"><div class="side-col">${left}</div><div class="side-col">${right}</div></div>`;
+        }
+
+        async function runDiff() {
+            const original = document.getElementById('orig').value;
+            const modified = document.getElementById('mod').value;
+            const context = parseInt(document.getElementById('ctx').value) || 3;
+
+            const res = await fetch('/diff', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ original, modified, mode, context })
+            });
+
+            const data = await res.json();
+
+            document.getElementById('s-add').textContent = '+' + data.stats.adds;
+            document.getElementById('s-del').textContent = '-' + data.stats.dels;
+            document.getElementById('stats').style.display = 'flex';
+
+            document.getElementById('output').innerHTML = mode === 'unified'
+                ? renderUnified(data)
+                : renderSide(data);
+        }
+
+        document.addEventListener('keydown', e => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runDiff();
+        });
+    </script>
+
+</body>
+
+</html>
